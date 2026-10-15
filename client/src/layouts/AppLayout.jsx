@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { roleLabels } from '../utils/labels.js';
+import ThemeToggle from '../components/ThemeToggle.jsx';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -53,9 +54,12 @@ export default function AppLayout() {
             <strong>{user.fullName}</strong>
             <span className="badge badge-info">{roleLabels[user.role] ?? user.role}</span>
           </div>
-          <button type="button" className="btn btn-ghost" onClick={logout}>
-            <LogOut size={16} aria-hidden="true" /> Log out
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ThemeToggle />
+            <button type="button" className="btn btn-ghost" onClick={logout}>
+              <LogOut size={16} aria-hidden="true" /> Log out
+            </button>
+          </div>
         </header>
         <main>
           <Outlet />

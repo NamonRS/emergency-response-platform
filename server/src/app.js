@@ -9,6 +9,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import patientRoutes from './routes/patientRoutes.js';
 import incidentRoutes from './routes/incidentRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
+import assistantRoutes from './routes/assistantRoutes.js';
 import { originCheck } from './middleware/originCheck.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 
@@ -164,6 +165,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/audit-logs', auditRoutes);
+app.use('/api/assistant', assistantRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -1,0 +1,476 @@
+import 'dotenv/config';
+import pg from 'pg';
+
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const AUDIT_SEEDS = [
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'incident.dispatch',
+    resourceType: 'incident',
+    resourceId: '1',
+    ip: '192.168.1.104',
+    minutesAgo: 460,
+    details: {
+      unit: 'Medic-4',
+      priority: 'IMMEDIATE',
+      dispatch_code: 'DELTA-9',
+      eta_minutes: 3,
+      staging_area: 'North Terminal Entrance',
+    },
+  },
+  {
+    userId: '1',
+    username: 'admin',
+    action: 'triage.override',
+    resourceType: 'incident',
+    resourceId: '1',
+    ip: '127.0.0.1',
+    minutesAgo: 440,
+    details: {
+      previous_triage: 'urgent',
+      new_triage: 'immediate',
+      reason: 'Agonal respirations and severe respiratory arrest reported by bystander',
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'vital_signs.alert',
+    resourceType: 'patient',
+    resourceId: '1',
+    ip: '192.168.1.104',
+    minutesAgo: 410,
+    details: {
+      vital_sign: 'heartRate',
+      value: 148,
+      threshold: 120,
+      alert: 'Tachycardia / Compensatory Shock',
+      unit: 'bpm',
+    },
+  },
+  {
+    userId: '3',
+    username: 'responder2',
+    action: 'patient.allergy_flag',
+    resourceType: 'patient',
+    resourceId: '1',
+    ip: '192.168.1.108',
+    minutesAgo: 380,
+    details: {
+      allergen: 'Penicillin',
+      reaction: 'Anaphylaxis',
+      flagged_by: 'Paramedic Field Lead',
+      alert: 'Severe Allergy Contraindication',
+    },
+  },
+  {
+    userId: '1',
+    username: 'admin',
+    action: 'ai_handover.commit',
+    resourceType: 'incident',
+    resourceId: '1',
+    ip: '127.0.0.1',
+    minutesAgo: 350,
+    details: {
+      summary_id: '4',
+      model: 'qwen2.5:7b',
+      verified_by: 'admin',
+      checksum: 'sha256-f8319e7a',
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'incident.status_change',
+    resourceType: 'incident',
+    resourceId: '2',
+    ip: '192.168.1.104',
+    minutesAgo: 330,
+    details: {
+      new_status: 'response_in_progress',
+      unit: 'Engine-12',
+      note: 'Suppression and extrication crew deployed on scene',
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'incident.add_event',
+    resourceType: 'incident',
+    resourceId: '2',
+    ip: '192.168.1.104',
+    minutesAgo: 310,
+    details: {
+      event_type: 'action_taken',
+      body: 'Rapid extrication completed. Bilateral large-bore IVs established with warmed saline',
+    },
+  },
+  {
+    userId: '1',
+    username: 'admin',
+    action: 'incident.assign',
+    resourceType: 'incident',
+    resourceId: '3',
+    ip: '127.0.0.1',
+    minutesAgo: 290,
+    details: {
+      assigned_to: '3',
+      assigned_to_name: 'responder2',
+      unit: 'Rescue-3',
+      dispatch_code: 'CHARLIE-4',
+    },
+  },
+  {
+    userId: '3',
+    username: 'responder2',
+    action: 'incident.link_patient',
+    resourceType: 'incident',
+    resourceId: '3',
+    ip: '192.168.1.108',
+    minutesAgo: 275,
+    details: {
+      patient_id: '3',
+      reason: 'On-scene primary victim identified via biometric match',
+    },
+  },
+  {
+    userId: '3',
+    username: 'responder2',
+    action: 'incident.ai_summary.generate',
+    resourceType: 'incident',
+    resourceId: '3',
+    ip: '192.168.1.108',
+    minutesAgo: 260,
+    details: {
+      model: 'qwen2.5:7b',
+      prompt_tokens: 388,
+      latency_ms: 1140,
+    },
+  },
+  {
+    userId: '3',
+    username: 'responder2',
+    action: 'incident.ai_summary.reviewed',
+    resourceType: 'incident',
+    resourceId: '3',
+    ip: '192.168.1.108',
+    minutesAgo: 250,
+    details: {
+      summary_id: '6',
+      clinician_approved: true,
+      edits_made: false,
+    },
+  },
+  {
+    userId: '3',
+    username: 'responder2',
+    action: 'vital_signs.alert',
+    resourceType: 'patient',
+    resourceId: '2',
+    ip: '192.168.1.108',
+    minutesAgo: 235,
+    details: {
+      vital_sign: 'SpO2',
+      value: 87,
+      threshold: 92,
+      alert: 'Hypoxemia / Impending Respiratory Failure',
+      unit: '%',
+    },
+  },
+  {
+    userId: '1',
+    username: 'admin',
+    action: 'triage.override',
+    resourceType: 'incident',
+    resourceId: '4',
+    ip: '127.0.0.1',
+    minutesAgo: 220,
+    details: {
+      previous_triage: 'delayed',
+      new_triage: 'urgent',
+      reason: 'High-speed rollover MVC with passenger entrapment',
+    },
+  },
+  {
+    userId: '1',
+    username: 'admin',
+    action: 'incident.dispatch',
+    resourceType: 'incident',
+    resourceId: '4',
+    ip: '127.0.0.1',
+    minutesAgo: 205,
+    details: {
+      unit: 'HeavyRescue-1',
+      priority: 'URGENT',
+      dispatch_code: 'BRAVO-2',
+      eta_minutes: 6,
+    },
+  },
+  {
+    userId: '1',
+    username: 'admin',
+    action: 'patient.restricted_notes_viewed',
+    resourceType: 'patient',
+    resourceId: '2',
+    ip: '127.0.0.1',
+    minutesAgo: 190,
+    details: {
+      accessReason: 'Emergency clinical escalation review',
+      authorization: 'Direct Attending',
+      supervisor_override: true,
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'patient.allergy_flag',
+    resourceType: 'patient',
+    resourceId: '3',
+    ip: '192.168.1.104',
+    minutesAgo: 175,
+    details: {
+      allergen: 'Sulfa Drugs',
+      reaction: 'Severe Rash / Angioedema',
+      flagged_by: 'Field Triage Team',
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'ai_handover.commit',
+    resourceType: 'incident',
+    resourceId: '5',
+    ip: '192.168.1.104',
+    minutesAgo: 160,
+    details: {
+      summary_id: '7',
+      model: 'qwen2.5:7b',
+      verified_by: 'responder1',
+      checksum: 'sha256-c77b2190',
+    },
+  },
+  {
+    userId: '3',
+    username: 'responder2',
+    action: 'incident.status_change',
+    resourceType: 'incident',
+    resourceId: '5',
+    ip: '192.168.1.108',
+    minutesAgo: 145,
+    details: {
+      new_status: 'resolved',
+      unit: 'Medic-4',
+      note: 'Patient handover completed at Trauma Receiving Bay 2',
+    },
+  },
+  {
+    userId: '3',
+    username: 'responder2',
+    action: 'incident.add_event',
+    resourceType: 'incident',
+    resourceId: '5',
+    ip: '192.168.1.108',
+    minutesAgo: 130,
+    details: {
+      event_type: 'note',
+      body: 'Trauma team activation confirmed at St. Jude Regional Emergency Department',
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'auth.login',
+    resourceType: null,
+    resourceId: null,
+    ip: '192.168.1.104',
+    minutesAgo: 115,
+    details: {
+      method: 'password',
+      role: 'responder',
+      mfa_status: 'verified',
+      client: 'Field-Tablet-MDT-3',
+    },
+  },
+  {
+    userId: '1',
+    username: 'admin',
+    action: 'auth.login',
+    resourceType: null,
+    resourceId: null,
+    ip: '127.0.0.1',
+    minutesAgo: 100,
+    details: {
+      method: 'session_refresh',
+      role: 'admin',
+      ip_revalidated: true,
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'auth.forbidden',
+    resourceType: null,
+    resourceId: null,
+    ip: '192.168.1.104',
+    minutesAgo: 85,
+    details: {
+      path: '/api/admin/system',
+      method: 'DELETE',
+      requiredRoles: ['admin'],
+      reason: 'Insufficient privileges for system teardown',
+    },
+  },
+  {
+    userId: '1',
+    username: 'admin',
+    action: 'incident.dispatch',
+    resourceType: 'incident',
+    resourceId: '6',
+    ip: '127.0.0.1',
+    minutesAgo: 70,
+    details: {
+      unit: 'Battalion-Chief-2',
+      priority: 'CRITICAL',
+      dispatch_code: 'STRUCTURE-FIRE-2ND',
+      eta_minutes: 2,
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'vital_signs.alert',
+    resourceType: 'patient',
+    resourceId: '4',
+    ip: '192.168.1.104',
+    minutesAgo: 55,
+    details: {
+      vital_sign: 'systolicBP',
+      value: 78,
+      threshold: 90,
+      alert: 'Severe Hypotension / Hemorrhagic Shock',
+      unit: 'mmHg',
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'triage.override',
+    resourceType: 'incident',
+    resourceId: '7',
+    ip: '192.168.1.104',
+    minutesAgo: 45,
+    details: {
+      previous_triage: 'delayed',
+      new_triage: 'immediate',
+      reason: 'Uncontrolled catastrophic extremity hemorrhage required tourniquet',
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'incident.add_event',
+    resourceType: 'incident',
+    resourceId: '7',
+    ip: '192.168.1.104',
+    minutesAgo: 35,
+    details: {
+      event_type: 'action_taken',
+      body: 'Combat Application Tourniquet applied right proximal thigh at 08:14. Distal pulse eliminated.',
+    },
+  },
+  {
+    userId: '3',
+    username: 'responder2',
+    action: 'patient.update',
+    resourceType: 'patient',
+    resourceId: '5',
+    ip: '192.168.1.108',
+    minutesAgo: 25,
+    details: {
+      fields: ['blood_group', 'emergency_contact', 'allergies'],
+      reason: 'Paramedic baseline documentation',
+    },
+  },
+  {
+    userId: '1',
+    username: 'admin',
+    action: 'incident.ai_summary.generate',
+    resourceType: 'incident',
+    resourceId: '8',
+    ip: '127.0.0.1',
+    minutesAgo: 18,
+    details: {
+      model: 'qwen2.5:7b',
+      prompt_tokens: 512,
+      latency_ms: 1390,
+    },
+  },
+  {
+    userId: '1',
+    username: 'admin',
+    action: 'ai_handover.commit',
+    resourceType: 'incident',
+    resourceId: '8',
+    ip: '127.0.0.1',
+    minutesAgo: 12,
+    details: {
+      summary_id: '9',
+      model: 'qwen2.5:7b',
+      verified_by: 'admin',
+      checksum: 'sha256-42d991b',
+    },
+  },
+  {
+    userId: '2',
+    username: 'responder1',
+    action: 'incident.status_change',
+    resourceType: 'incident',
+    resourceId: '9',
+    ip: '192.168.1.104',
+    minutesAgo: 4,
+    details: {
+      new_status: 'response_in_progress',
+      unit: 'Medic-1',
+      note: 'Paramedics on scene initiating transcutaneous cardiac pacing',
+    },
+  },
+];
+
+async function seedAuditActivity() {
+  console.log('Seeding rich clinical audit events into PostgreSQL...');
+  const now = Date.now();
+  let inserted = 0;
+
+  for (const s of AUDIT_SEEDS) {
+    const createdAt = new Date(now - s.minutesAgo * 60 * 1000).toISOString();
+    await pool.query(
+      `INSERT INTO audit_logs
+         (user_id, actor_username, action, resource_type, resource_id, details, ip_address, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        s.userId,
+        s.username,
+        s.action,
+        s.resourceType,
+        s.resourceId,
+        JSON.stringify(s.details),
+        s.ip,
+        createdAt,
+      ]
+    );
+    inserted++;
+  }
+
+  const { rows } = await pool.query('SELECT count(*) AS total FROM audit_logs');
+  console.log(`Successfully seeded ${inserted} realistic audit logs! Total count is now: ${rows[0].total}`);
+  await pool.end();
+}
+
+seedAuditActivity().catch((err) => {
+  console.error('Error seeding audit activity:', err);
+  process.exit(1);
+});

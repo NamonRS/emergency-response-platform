@@ -89,7 +89,7 @@ export default function AiReviewModal({
               <div className="flex-row items-start gap-2" style={{ flex: 1, minWidth: '260px' }}>
                 <ShieldAlert size={22} className="text-warn flex-shrink-0 mt-1" aria-hidden="true" />
                 <div>
-                  <strong style={{ color: '#92400e' }}>AI Draft — Untrusted & Unreviewed</strong>
+                  <strong className="text-warn">AI Draft — Untrusted & Unreviewed</strong>
                   <p className="small mb-0 text-muted" style={{ lineHeight: 1.45 }}>
                     Clinical staff must review, verify, and edit all data before committing to the official patient record.
                   </p>

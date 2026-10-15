@@ -11,7 +11,8 @@ import IncidentsPage from './pages/IncidentsPage.jsx';
 import IncidentFormPage from './pages/IncidentFormPage.jsx';
 import IncidentDetailPage from './pages/IncidentDetailPage.jsx';
 import ActivityLogPage from './pages/ActivityLogPage.jsx';
-import PlaceholderPage from './pages/PlaceholderPage.jsx';
+import AiAssistantPage from './pages/AiAssistantPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 export default function App() {
@@ -33,26 +34,8 @@ export default function App() {
           <Route path="incidents/new" element={<IncidentFormPage />} />
           <Route path="incidents/:id" element={<IncidentDetailPage />} />
 
-          <Route
-            path="ai-assistant"
-            element={
-              <PlaceholderPage
-                title="AI Assistant"
-                stage="Stages 7 to 9 (local AI) and Stage 12 (optional protocol assistant)"
-                description="Local AI summaries run through Ollama."
-              />
-            }
-          />
-          <Route
-            path="settings"
-            element={
-              <PlaceholderPage
-                title="Settings"
-                stage="a later stage"
-                description="Account and application settings."
-              />
-            }
-          />
+          <Route path="ai-assistant" element={<AiAssistantPage />} />
+          <Route path="settings" element={<SettingsPage />} />
 
           <Route element={<ProtectedRoute roles={['admin']} />}>
             <Route path="activity-log" element={<ActivityLogPage />} />

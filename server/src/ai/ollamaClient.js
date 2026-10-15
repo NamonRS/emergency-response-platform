@@ -49,7 +49,7 @@ export async function callOllama({
         model,
         prompt,
         system: systemPrompt,
-        format,
+        ...(format && format !== 'text' ? { format } : {}),
         stream: false,
         options: {
           temperature,

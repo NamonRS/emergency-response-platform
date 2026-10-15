@@ -24,7 +24,7 @@ export default function UsersPage() {
   return (
     <div className="page">
       <h1>Users</h1>
-      <p className="muted">Read-only for now. Creating and deactivating users arrives in Stage 10.</p>
+      <p className="muted">Authenticated system accounts and active operational dispatch roles.</p>
 
       {error && (
         <div className="notice notice-error" role="alert">
