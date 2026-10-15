@@ -177,3 +177,27 @@ export const linkPatientBodySchema = z
     patient_id: d.patient_id !== undefined ? d.patient_id : (d.patientId ?? null),
   }));
 
+export const incidentAiOutputSchema = z.object({
+  triageCategory: z.string().trim().min(1).default('Urgent'),
+  primaryInjuries: z.array(z.string()).default([]),
+  vitalSignAbnormalities: z.array(z.string()).default([]),
+  criticalInterventionsDone: z.array(z.string()).default([]),
+  immediateRisks: z.array(z.string()).default([]),
+  suggestedHandoverNote: z.string().trim().default(''),
+});
+
+export const acceptAiSummaryBodySchema = z
+  .object({
+    summary_id: optionalBigInt,
+    summaryId: optionalBigInt,
+    edited_content: z.record(z.string(), z.any()).optional(),
+    editedContent: z.record(z.string(), z.any()).optional(),
+  })
+  .refine((d) => Boolean(d.summary_id || d.summaryId), {
+    message: 'summary_id is required.',
+    path: ['summary_id'],
+  })
+  .transform((d) => ({
+    summary_id: d.summary_id || d.summaryId,
+    edited_content: d.edited_content || d.editedContent || {},
+  }));

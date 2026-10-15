@@ -7,6 +7,9 @@ import UsersPage from './pages/UsersPage.jsx';
 import PatientsPage from './pages/PatientsPage.jsx';
 import PatientDetailPage from './pages/PatientDetailPage.jsx';
 import PatientFormPage from './pages/PatientFormPage.jsx';
+import IncidentsPage from './pages/IncidentsPage.jsx';
+import IncidentFormPage from './pages/IncidentFormPage.jsx';
+import IncidentDetailPage from './pages/IncidentDetailPage.jsx';
 import PlaceholderPage from './pages/PlaceholderPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
@@ -25,26 +28,10 @@ export default function App() {
           <Route path="patients/:id" element={<PatientDetailPage />} />
           <Route path="patients/:id/edit" element={<PatientFormPage />} />
 
-          <Route
-            path="incidents"
-            element={
-              <PlaceholderPage
-                title="Incidents"
-                stage="Stage 5"
-                description="Incident registration, search, filters, status updates, and notes."
-              />
-            }
-          />
-          <Route
-            path="incidents/:id"
-            element={
-              <PlaceholderPage
-                title="Incident details"
-                stage="Stage 5"
-                description="Incident details, history, and notes."
-              />
-            }
-          />
+          <Route path="incidents" element={<IncidentsPage />} />
+          <Route path="incidents/new" element={<IncidentFormPage />} />
+          <Route path="incidents/:id" element={<IncidentDetailPage />} />
+
           <Route
             path="ai-assistant"
             element={

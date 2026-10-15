@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import {
+  acceptAiSummary,
   addEvent,
   assign,
   assignableUsers,
   create,
+  generateAiSummary,
   get,
   linkPatient,
   list,
@@ -12,6 +14,7 @@ import {
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
+  acceptAiSummaryBodySchema,
   addEventBodySchema,
   assignBodySchema,
   createIncidentBodySchema,
@@ -31,7 +34,7 @@ router.use((req, res, next) => {
   next();
 });
 
-// Place static paths before parameterized '/:id' paths
+// Static endpoints before parameterized '/:id'
 router.get('/assignable-users', assignableUsers);
 
 router.get('/', validate(listIncidentsQuerySchema, 'query'), list);
@@ -84,5 +87,18 @@ router.put(
   linkPatient
 );
 
-export default router;
+// AI Handover & Triage synthesis endpoints
+router.post(
+  '/:id/ai-summary',
+  validate(idParamSchema, 'params'),
+  generateAiSummary
+);
 
+router.post(
+  '/:id/ai-summary/accept',
+  validate(idParamSchema, 'params'),
+  validate(acceptAiSummaryBodySchema),
+  acceptAiSummary
+);
+
+export default router;

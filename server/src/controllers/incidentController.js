@@ -2,9 +2,11 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { HttpError } from '../utils/httpError.js';
 import { logAudit } from '../services/auditService.js';
 import {
+  acceptIncidentSummary,
   addIncidentEvent,
   assignIncident,
   createIncident,
+  generateIncidentSummary,
   getIncidentById,
   linkIncidentPatient,
   listAssignableUsers,
@@ -140,3 +142,39 @@ export const assignableUsers = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { users } });
 });
 
+export const generateAiSummary = asyncHandler(async (req, res) => {
+  const { id } = req.validated.params;
+  const summary = await generateIncidentSummary(id, req.user);
+
+  await logAudit({
+    req,
+    action: 'ai_summary.generate',
+    resourceType: 'incident',
+    resourceId: id,
+    details: {
+      summary_id: summary.summaryId,
+      model: summary.model,
+    },
+  });
+
+  res.status(201).json({ success: true, data: { summary } });
+});
+
+export const acceptAiSummary = asyncHandler(async (req, res) => {
+  const { id } = req.validated.params;
+  const { summary_id, edited_content } = req.validated.body;
+
+  const incident = await acceptIncidentSummary(id, { summary_id, edited_content }, req.user);
+
+  await logAudit({
+    req,
+    action: 'ai_summary.reviewed',
+    resourceType: 'ai_summary',
+    resourceId: summary_id,
+    details: {
+      incident_id: id,
+    },
+  });
+
+  res.json({ success: true, data: { incident } });
+});

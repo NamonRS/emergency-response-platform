@@ -1,5 +1,11 @@
 import { pool } from '../db/pool.js';
 import { HttpError } from '../utils/httpError.js';
+import { callOllama } from '../ai/ollamaClient.js';
+import {
+  INCIDENT_TRIAGE_SYSTEM_PROMPT,
+  buildIncidentTriageUserPrompt,
+} from '../ai/prompts/incidentTriagePrompt.js';
+import { incidentAiOutputSchema } from '../validators/incidentValidators.js';
 
 function mapPatientSummary(row) {
   if (!row.patient_id) return null;
@@ -451,3 +457,143 @@ export async function listAssignableUsers() {
   }));
 }
 
+export async function generateIncidentSummary(incidentId, user) {
+  const incident = await getIncidentById(incidentId);
+  if (!incident) {
+    throw new HttpError(404, 'NOT_FOUND', 'Incident not found.');
+  }
+
+  const sourceSnapshot = {
+    incidentCode: incident.incidentCode,
+    incidentType: incident.incidentType,
+    severity: incident.severity,
+    status: incident.status,
+    locationDescription: incident.locationDescription,
+    occurredAt: incident.occurredAt,
+    description: incident.description,
+    patient: incident.patient
+      ? {
+          id: incident.patient.id,
+          patientCode: incident.patient.patientCode,
+          fullName: incident.patient.fullName,
+        }
+      : null,
+    events: (incident.events || []).map((e) => ({
+      id: e.id,
+      eventType: e.eventType,
+      body: e.body,
+      oldStatus: e.oldStatus,
+      newStatus: e.newStatus,
+      createdAt: e.createdAt,
+    })),
+  };
+
+  const userPrompt = buildIncidentTriageUserPrompt({
+    incident,
+    events: incident.events,
+    patient: incident.patient,
+  });
+
+  const { rawOutput, model, totalDurationMs } = await callOllama({
+    prompt: userPrompt,
+    systemPrompt: INCIDENT_TRIAGE_SYSTEM_PROMPT,
+    format: 'json',
+  });
+
+  let parsed;
+  try {
+    parsed = JSON.parse(rawOutput);
+  } catch {
+    throw new HttpError(502, 'AI_INVALID_JSON', 'Local AI generated an invalid JSON response.');
+  }
+
+  const validatedContent = incidentAiOutputSchema.parse(parsed);
+
+  const insertRes = await pool.query(
+    `INSERT INTO ai_summaries
+       (summary_type, incident_id, requested_by, model, prompt_version, source_snapshot, generated_content, review_status, generation_ms)
+     VALUES
+       ('incident', $1, $2, $3, 'v1.0', $4, $5, 'pending_review', $6)
+     RETURNING id, created_at`,
+    [
+      incidentId,
+      user.id,
+      model,
+      JSON.stringify(sourceSnapshot),
+      JSON.stringify(validatedContent),
+      totalDurationMs ?? 0,
+    ]
+  );
+
+  const summaryRow = insertRes.rows[0];
+
+  return {
+    summaryId: String(summaryRow.id),
+    incidentId: String(incidentId),
+    model,
+    promptVersion: 'v1.0',
+    reviewStatus: 'pending_review',
+    generatedContent: validatedContent,
+    sourceSnapshot,
+    generationMs: totalDurationMs,
+    createdAt: summaryRow.created_at,
+  };
+}
+
+export async function acceptIncidentSummary(incidentId, { summary_id, edited_content }, user) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const checkRes = await client.query(
+      `SELECT id, incident_id, review_status, generated_content
+         FROM ai_summaries
+        WHERE id = $1 AND incident_id = $2
+        FOR UPDATE`,
+      [summary_id, incidentId]
+    );
+
+    if (checkRes.rows.length === 0) {
+      throw new HttpError(404, 'NOT_FOUND', 'AI summary draft not found for this incident.');
+    }
+
+    const currentSummary = checkRes.rows[0];
+    if (currentSummary.review_status === 'reviewed') {
+      throw new HttpError(400, 'ALREADY_REVIEWED', 'This AI summary draft has already been approved.');
+    }
+
+    await client.query(
+      `UPDATE ai_summaries
+          SET review_status = 'reviewed',
+              reviewed_by = $1,
+              reviewed_at = now(),
+              edited_content = $2
+        WHERE id = $3`,
+      [user.id, JSON.stringify(edited_content), summary_id]
+    );
+
+    const handoverText =
+      edited_content.suggestedHandoverNote ||
+      `Clinical Handover Note (Category: ${edited_content.triageCategory || 'Unspecified'})\n` +
+      `Immediate Risks: ${(edited_content.immediateRisks || []).join(', ') || 'None documented'}`;
+
+    const eventBody = `[AI Triage & Clinical Handover Approved]\n${handoverText}`;
+
+    await client.query(
+      `INSERT INTO incident_events
+         (incident_id, event_type, body, created_by)
+       VALUES ($1, 'action_taken', $2, $3)`,
+      [incidentId, eventBody, user.id]
+    );
+
+    await client.query('UPDATE incidents SET updated_at = now() WHERE id = $1', [incidentId]);
+
+    await client.query('COMMIT');
+    return await getIncidentById(incidentId);
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
