@@ -226,7 +226,9 @@ export default function IncidentsPage() {
                       <StatusBadge kind="severity" value={inc.severity} />
                     </td>
                     <td>
-                      <StatusBadge kind="status" value={inc.status} />
+                      <div className={inc.status === 'response_in_progress' ? 'status-pulse' : ''}>
+                        <StatusBadge kind="status" value={inc.status} />
+                      </div>
                     </td>
                     <td className="location-cell" title={inc.locationDescription}>
                       {inc.locationDescription}

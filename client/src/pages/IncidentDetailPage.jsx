@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
+  Activity,
   AlertTriangle,
   ArrowLeft,
   CheckCircle,
   Clock,
+  FileCheck2,
   FileText,
   MapPin,
   PlusCircle,
@@ -30,6 +32,25 @@ import StatusBadge from '../components/StatusBadge.jsx';
 import AiReviewModal from '../components/AiReviewModal.jsx';
 import { formatDateTime } from '../utils/format.js';
 import { incidentTypeLabels, severityLabels, statusLabels } from '../utils/labels.js';
+
+function getEventIcon(eventType, isHandover) {
+  if (isHandover) return <Sparkles size={13} aria-hidden="true" />;
+  switch (eventType) {
+    case 'created':
+      return <PlusCircle size={13} aria-hidden="true" />;
+    case 'status_change':
+      return <Clock size={13} aria-hidden="true" />;
+    case 'action_taken':
+      return <CheckCircle size={13} aria-hidden="true" />;
+    case 'assignment':
+      return <UserCheck size={13} aria-hidden="true" />;
+    case 'patient_linked':
+      return <User size={13} aria-hidden="true" />;
+    case 'note':
+    default:
+      return <FileText size={13} aria-hidden="true" />;
+  }
+}
 
 export default function IncidentDetailPage() {
   const { id } = useParams();
@@ -96,7 +117,7 @@ export default function IncidentDetailPage() {
 
   function showTemporarySuccess(msg) {
     setActionSuccess(msg);
-    setTimeout(() => setActionSuccess(''), 4000);
+    setTimeout(() => setActionSuccess(''), 4500);
   }
 
   async function handleStatusChange(e) {
@@ -161,7 +182,6 @@ export default function IncidentDetailPage() {
         event_type: newEventType,
         body: newEventBody.trim(),
       });
-      // Append newly created event to local state
       setIncident((prev) => ({
         ...prev,
         events: [...(prev.events || []), res.event],
@@ -231,6 +251,8 @@ export default function IncidentDetailPage() {
     );
   }
 
+  const isResponseInProgress = incident.status === 'response_in_progress';
+
   return (
     <div className="page">
       {/* Top Breadcrumb & Header */}
@@ -242,7 +264,9 @@ export default function IncidentDetailPage() {
           <div className="flex-row items-center gap-3">
             <h1>{incident.incidentCode}</h1>
             <StatusBadge kind="severity" value={incident.severity} />
-            <StatusBadge kind="status" value={incident.status} />
+            <div className={isResponseInProgress ? 'status-pulse' : ''}>
+              <StatusBadge kind="status" value={incident.status} />
+            </div>
           </div>
           <p className="muted small">
             Reported by {incident.reportedByUser?.fullName || 'System'} • Occurred at {formatDateTime(incident.occurredAt)}
@@ -264,7 +288,22 @@ export default function IncidentDetailPage() {
         </div>
       </div>
 
-      {/* Messages */}
+      {/* AI Inference Shimmer Banner */}
+      {isGeneratingAi && (
+        <div className="ai-shimmer-card">
+          <div className="flex-row items-center justify-center gap-2 mb-1">
+            <Activity className="text-primary spinner" size={20} aria-hidden="true" />
+            <strong className="text-primary" style={{ fontSize: '1.05rem' }}>
+              Synthesizing Clinical Handover with Local Ollama...
+            </strong>
+          </div>
+          <p className="muted small mb-0">
+            Synthesizing field observations, chronological events, and linked patient background. Local inference in progress.
+          </p>
+        </div>
+      )}
+
+      {/* Notifications */}
       {actionSuccess && (
         <div className="notice notice-success flex-row items-center gap-2" role="status">
           <CheckCircle size={16} aria-hidden="true" /> {actionSuccess}
@@ -474,35 +513,60 @@ export default function IncidentDetailPage() {
                 <p className="muted small">No events logged yet.</p>
               )}
 
-              {incident.events?.map((ev) => (
-                <div key={ev.id} className="timeline-item">
-                  <div className={`timeline-badge badge-event-${ev.eventType}`} />
-                  <div className="timeline-content">
-                    <div className="timeline-header">
-                      <span className="font-bold small capitalize">
-                        {ev.eventType.replace('_', ' ')}
-                      </span>
-                      <span className="muted small">{formatDateTime(ev.createdAt)}</span>
+              {incident.events?.map((ev) => {
+                const isHandover =
+                  ev.body?.includes('[AI Triage & Clinical Handover Approved]') ||
+                  (ev.eventType === 'action_taken' && ev.body?.toLowerCase().includes('handover'));
+
+                const badgeClass = isHandover ? 'badge-handover' : `badge-${ev.eventType}`;
+
+                return (
+                  <div key={ev.id} className="timeline-item">
+                    <div className={`timeline-badge-wrap ${badgeClass}`}>
+                      {getEventIcon(ev.eventType, isHandover)}
                     </div>
+                    <div
+                      className={`timeline-content ${
+                        isHandover ? 'timeline-handover-card' : ''
+                      }`}
+                    >
+                      <div className="timeline-header">
+                        {isHandover ? (
+                          <span className="handover-badge-pill">
+                            <FileCheck2 size={12} aria-hidden="true" />
+                            Verified AI Clinical Handover
+                          </span>
+                        ) : (
+                          <span className="font-bold small capitalize">
+                            {ev.eventType.replace('_', ' ')}
+                          </span>
+                        )}
+                        <span className="muted small">{formatDateTime(ev.createdAt)}</span>
+                      </div>
 
-                    {ev.oldStatus && ev.newStatus && (
-                      <p className="small mb-1">
-                        Status: <span className="muted">{statusLabels[ev.oldStatus] || ev.oldStatus}</span> → <strong>{statusLabels[ev.newStatus] || ev.newStatus}</strong>
-                      </p>
-                    )}
+                      {ev.oldStatus && ev.newStatus && (
+                        <p className="small mb-1">
+                          Status: <span className="muted">{statusLabels[ev.oldStatus] || ev.oldStatus}</span> → <strong>{statusLabels[ev.newStatus] || ev.newStatus}</strong>
+                        </p>
+                      )}
 
-                    {ev.body && (
-                      <p className="small pre-wrap mb-1 timeline-body">
-                        {ev.body}
-                      </p>
-                    )}
+                      {ev.body && (
+                        <div className={isHandover ? 'handover-content-box' : 'timeline-body'}>
+                          <p className="small pre-wrap mb-0">
+                            {isHandover
+                              ? ev.body.replace('[AI Triage & Clinical Handover Approved]\n', '')
+                              : ev.body}
+                          </p>
+                        </div>
+                      )}
 
-                    <span className="muted x-small">
-                      By {ev.createdBy?.fullName || ev.createdBy?.username || 'User'}
-                    </span>
+                      <span className="muted x-small">
+                        By {ev.createdBy?.fullName || ev.createdBy?.username || 'User'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Add Note / Action Form */}
@@ -573,4 +637,3 @@ export default function IncidentDetailPage() {
     </div>
   );
 }
-
