@@ -10,6 +10,7 @@ import PatientFormPage from './pages/PatientFormPage.jsx';
 import IncidentsPage from './pages/IncidentsPage.jsx';
 import IncidentFormPage from './pages/IncidentFormPage.jsx';
 import IncidentDetailPage from './pages/IncidentDetailPage.jsx';
+import ActivityLogPage from './pages/ActivityLogPage.jsx';
 import PlaceholderPage from './pages/PlaceholderPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
@@ -54,16 +55,7 @@ export default function App() {
           />
 
           <Route element={<ProtectedRoute roles={['admin']} />}>
-            <Route
-              path="activity-log"
-              element={
-                <PlaceholderPage
-                  title="Activity Log"
-                  stage="Stage 10"
-                  description="Searchable audit log (administrators only). Events are already being recorded in the database."
-                />
-              }
-            />
+            <Route path="activity-log" element={<ActivityLogPage />} />
             <Route path="admin/users" element={<UsersPage />} />
           </Route>
 

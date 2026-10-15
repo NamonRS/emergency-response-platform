@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Activity,
@@ -10,6 +10,7 @@ import {
   FileText,
   MapPin,
   PlusCircle,
+  RefreshCw,
   Send,
   ShieldAlert,
   Sparkles,
@@ -60,6 +61,11 @@ export default function IncidentDetailPage() {
   const [error, setError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
 
+  // Polling & sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(Date.now());
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
   // Lookups
   const [users, setUsers] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -83,37 +89,75 @@ export default function IncidentDetailPage() {
   const [isApprovingAi, setIsApprovingAi] = useState(false);
   const [aiError, setAiError] = useState('');
 
+  // Seconds counter
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError('');
+    const timer = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastSyncedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lastSyncedAt]);
 
-    Promise.all([
+  const loadIncidentData = useCallback((isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+      setError('');
+    } else {
+      setIsSyncing(true);
+    }
+
+    return Promise.all([
       getIncident(id),
-      listAssignableUsers().catch(() => ({ users: [] })),
-      listPatients({ pageSize: 50 }).catch(() => ({ patients: [] })),
+      !isBackground ? listAssignableUsers().catch(() => ({ users: [] })) : Promise.resolve(null),
+      !isBackground ? listPatients({ pageSize: 50 }).catch(() => ({ patients: [] })) : Promise.resolve(null),
     ])
       .then(([incData, usersData, patientsData]) => {
-        if (!cancelled) {
-          setIncident(incData.incident);
+        setIncident(incData.incident);
+        if (!isBackground) {
           setNewStatus(incData.incident.status);
           setSelectedPatientId(incData.incident.patientId || '');
-          setUsers(usersData.users || []);
-          setPatients(patientsData.patients || []);
-          setLoading(false);
         }
+        if (usersData) setUsers(usersData.users || []);
+        if (patientsData) setPatients(patientsData.patients || []);
+        setLastSyncedAt(Date.now());
+        setSecondsAgo(0);
+        setError('');
       })
       .catch((err) => {
-        if (!cancelled) {
-          setError(err.message);
-          setLoading(false);
-        }
+        if (!isBackground) setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+        setIsSyncing(false);
       });
+  }, [id]);
+
+  // Initial load
+  useEffect(() => {
+    loadIncidentData(false);
+  }, [loadIncidentData]);
+
+  // Background 8s polling
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Don't poll while modal is open or while running AI inference
+      if (document.visibilityState === 'visible' && !aiModalOpen && !isGeneratingAi) {
+        loadIncidentData(true);
+      }
+    }, 8000);
+
+    function onVisibility() {
+      if (document.visibilityState === 'visible' && !aiModalOpen && !isGeneratingAi) {
+        loadIncidentData(true);
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [id]);
+  }, [loadIncidentData, aiModalOpen, isGeneratingAi]);
 
   function showTemporarySuccess(msg) {
     setActionSuccess(msg);
@@ -273,8 +317,24 @@ export default function IncidentDetailPage() {
           </p>
         </div>
 
-        {/* AI Handover Action Button */}
+        {/* Live sync & AI Actions */}
         <div className="flex-row items-center gap-2">
+          <div className="live-indicator-badge" title="Live background polling every 8s">
+            <span className="live-dot" aria-hidden="true" />
+            <span className="small muted">
+              {isSyncing ? 'Syncing...' : `Live (${secondsAgo}s ago)`}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => loadIncidentData(true)}
+              disabled={isSyncing || loading}
+              aria-label="Refresh incident"
+            >
+              <RefreshCw size={12} className={isSyncing ? 'spinner-icon' : ''} />
+            </button>
+          </div>
+
           <button
             type="button"
             className="btn btn-primary"
@@ -283,7 +343,7 @@ export default function IncidentDetailPage() {
             title="Generate AI Triage & Clinical Handover synthesis locally with Ollama"
           >
             <Sparkles size={16} aria-hidden="true" />
-            {isGeneratingAi ? 'Synthesizing with Local AI...' : 'Generate AI Clinical Handover'}
+            {isGeneratingAi ? 'Synthesizing...' : 'Generate AI Handover'}
           </button>
         </div>
       </div>
@@ -326,7 +386,6 @@ export default function IncidentDetailPage() {
       <div className="incident-grid-layout">
         {/* Left Column: Details, Linked Patient, Status & Assignment */}
         <div className="incident-main-col">
-          {/* Overview Card */}
           <section className="card" aria-labelledby="heading-details">
             <h2 id="heading-details" className="mb-2">Incident Overview</h2>
             <div className="detail-grid">

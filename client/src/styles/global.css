@@ -487,3 +487,541 @@ h3 { font-size: 0.95rem; margin: 14px 0 4px; }
   color: #166534;
   border-color: #bbf7d0;
 }
+
+/* Live Feed Indicator (Stage 6) */
+.live-indicator-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16a34a;
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+  animation: pulse-ring 2s infinite;
+}
+.spinner-icon {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Patient Clinical Brief Card (Stage 8) */
+.verified-brief-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+.brief-protocol-box {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #14532d;
+  line-height: 1.5;
+}
+
+/* Stage 10: Admin Audit Log & Security Activity Viewer */
+.audit-security-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(22, 101, 52, 0.06);
+}
+
+.audit-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.audit-stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.audit-stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.audit-stat-icon.icon-primary {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.audit-stat-icon.icon-success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.audit-stat-icon.icon-purple {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
+.audit-stat-val {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.audit-stat-lbl {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.audit-filters-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.audit-filters-row {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1fr 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+@media (max-width: 1024px) {
+  .audit-filters-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .audit-filters-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.audit-filter-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #b8c2cc;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  background: #fff;
+}
+
+.audit-filter-input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+/* Action category badges */
+.badge-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  border: 1px solid transparent;
+}
+
+.badge-action-auth {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.badge-action-alert {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.badge-action-view {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.badge-action-create {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.badge-action-update {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.badge-action-ai {
+  background: #ede9fe;
+  color: #6d28d9;
+  border-color: #ddd6fe;
+}
+
+.audit-code-ip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.audit-resource-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--primary-dark);
+  text-decoration: none;
+}
+
+.audit-resource-tag:hover {
+  text-decoration: underline;
+}
+
+.audit-details-preview {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.76rem;
+  color: var(--muted);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Modal styles for JSON inspection */
+.audit-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.audit-modal-box {
+  background: #ffffff;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.25);
+  border: 1px solid var(--border);
+}
+
+.audit-modal-header {
+  padding: 18px 22px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.audit-modal-body {
+  padding: 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.audit-metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.audit-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.audit-meta-lbl {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.audit-meta-val {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.audit-json-wrap {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #1e293b;
+}
+
+.audit-json-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1e293b;
+  color: #94a3b8;
+  padding: 8px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.audit-json-box {
+  background: #0f172a;
+  color: #38bdf8;
+  padding: 16px;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.audit-modal-footer {
+  padding: 14px 22px;
+  background: #f8fafc;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Pagination Bar */
+.audit-pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.audit-pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Stage 11: System Diagnostics & Health Probe */
+.health-pills-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.health-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.health-pill-ok {
+  background: #f0fdf4;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.health-pill-warn {
+  background: #fefce8;
+  color: #854d0e;
+  border-color: #fef08a;
+}
+
+.health-pill-err {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.health-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.health-pill-dot.dot-ok {
+  background: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+  animation: pulse-ring 2s infinite;
+}
+
+.health-pill-dot.dot-err {
+  background: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+}
+
+.diag-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.diag-modal-box {
+  background: #ffffff;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 760px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  border: 1px solid var(--border);
+}
+
+.diag-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.diag-card {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diag-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.diag-card-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.diag-card-status {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.diag-table-counts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.diag-count-box {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.diag-count-val {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.diag-count-lbl {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 2px;
+}
+
+.diag-cloud-zero-banner {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  color: #1e40af;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}

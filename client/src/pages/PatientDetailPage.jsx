@@ -1,13 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { Pencil, Sparkles } from 'lucide-react';
-import { getPatient } from '../services/patients.js';
+import {
+  Activity,
+  AlertOctagon,
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle,
+  FileCheck2,
+  HeartPulse,
+  Pencil,
+  Sparkles,
+} from 'lucide-react';
+import {
+  acceptPatientAiSummary,
+  generatePatientAiSummary,
+  getPatient,
+} from '../services/patients.js';
 import { useAuth } from '../hooks/useAuth.js';
 import { calcAge, formatDate, formatDateTime } from '../utils/format.js';
 import { incidentTypeLabels } from '../utils/labels.js';
 import LoadingSpinner from '../components/LoadingSpinner.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import MedicalList from '../components/MedicalList.jsx';
+import PatientAiReviewModal from '../components/PatientAiReviewModal.jsx';
 
 export default function PatientDetailPage() {
   const { id } = useParams();
@@ -16,35 +31,107 @@ export default function PatientDetailPage() {
   const isAdmin = user.role === 'admin';
 
   const [state, setState] = useState({ key: null, data: null, error: '' });
+  const [actionSuccess, setActionSuccess] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    getPatient(id)
+  // AI Modal and Generation State
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiDraftData, setAiDraftData] = useState(null);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [isApprovingAi, setIsApprovingAi] = useState(false);
+  const [aiError, setAiError] = useState('');
+
+  const loadPatientData = useCallback(() => {
+    return getPatient(id)
       .then((data) => {
-        if (!cancelled) setState({ key: id, data, error: '' });
+        setState({ key: id, data, error: '' });
       })
       .catch((err) => {
-        if (!cancelled) setState({ key: id, data: null, error: err.message });
+        setState({ key: id, data: null, error: err.message });
       });
-    return () => {
-      cancelled = true;
-    };
   }, [id]);
 
+  useEffect(() => {
+    loadPatientData();
+  }, [loadPatientData]);
+
+  function showSuccessNotice(msg) {
+    setActionSuccess(msg);
+    setTimeout(() => setActionSuccess(''), 4500);
+  }
+
+  async function handleTriggerAiSummary() {
+    setIsGeneratingAi(true);
+    setAiError('');
+    try {
+      const res = await generatePatientAiSummary(id);
+      setAiDraftData(res.summary);
+      setAiModalOpen(true);
+    } catch (err) {
+      setAiError(err.message || 'Failed to generate AI patient brief.');
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  }
+
+  async function handleApproveAiSummary({ summaryId, edited_content }) {
+    setIsApprovingAi(true);
+    setAiError('');
+    try {
+      const res = await acceptPatientAiSummary(id, {
+        summary_id: summaryId,
+        edited_content,
+      });
+      // Refresh patient data to reflect the new latestAiSummary
+      setState((prev) => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          latestAiSummary: res.summary,
+        },
+      }));
+      setAiModalOpen(false);
+      showSuccessNotice('Clinical Medical Brief approved and saved to medical record.');
+    } catch (err) {
+      setAiError(err.message || 'Failed to approve AI summary.');
+    } finally {
+      setIsApprovingAi(false);
+    }
+  }
+
   const loading = state.key !== id;
-  if (loading) return <div className="page"><LoadingSpinner label="Loading patient" /></div>;
-  if (state.error) {
+  if (loading) {
     return (
       <div className="page">
-        <div className="notice notice-error" role="alert">{state.error}</div>
-        <Link to="/patients">Back to patients</Link>
+        <LoadingSpinner label="Loading patient record..." />
       </div>
     );
   }
 
-  const { patient, incidents } = state.data;
+  if (state.error || !state.data) {
+    return (
+      <div className="page">
+        <div className="notice notice-error" role="alert">
+          {state.error || 'Patient not found.'}
+        </div>
+        <Link to="/patients" className="btn btn-ghost mt-2">
+          ← Back to patients
+        </Link>
+      </div>
+    );
+  }
+
+  const { patient, incidents, latestAiSummary } = state.data;
   const flash = location.state?.flash;
   const showRestricted = isAdmin || patient.hasRestrictedNotes;
+  const briefContent = latestAiSummary?.content;
+
+  const alertLevel = briefContent?.clinicalAlert || 'Medium';
+  const alertBorderClass =
+    alertLevel === 'High'
+      ? 'triage-border-immediate'
+      : alertLevel === 'Medium'
+      ? 'triage-border-urgent'
+      : 'triage-border-delayed';
 
   return (
     <div className="page">
@@ -52,8 +139,23 @@ export default function PatientDetailPage() {
         <Link to="/patients">← All patients</Link>
       </p>
 
-      {flash && <div className="notice notice-success" role="status">{flash}</div>}
+      {flash && (
+        <div className="notice notice-success" role="status">
+          {flash}
+        </div>
+      )}
+      {actionSuccess && (
+        <div className="notice notice-success flex-row items-center gap-2" role="status">
+          <CheckCircle size={16} aria-hidden="true" /> {actionSuccess}
+        </div>
+      )}
+      {aiError && (
+        <div className="notice notice-error" role="alert">
+          <AlertTriangle size={16} aria-hidden="true" /> {aiError}
+        </div>
+      )}
 
+      {/* Header */}
       <div className="page-header">
         <div>
           <h1>{patient.fullName}</h1>
@@ -63,11 +165,105 @@ export default function PatientDetailPage() {
             {patient.isSynthetic && <span className="badge badge-info">Synthetic record</span>}
           </p>
         </div>
-        <Link to={`/patients/${patient.id}/edit`} className="btn btn-ghost">
-          <Pencil size={16} aria-hidden="true" /> Edit
-        </Link>
+        <div className="flex-row items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleTriggerAiSummary}
+            disabled={isGeneratingAi}
+            title="Synthesize Clinical Medical Brief locally with Ollama"
+          >
+            <Sparkles size={16} aria-hidden="true" />
+            {isGeneratingAi ? 'Synthesizing...' : 'Generate AI Medical Brief'}
+          </button>
+          <Link to={`/patients/${patient.id}/edit`} className="btn btn-ghost">
+            <Pencil size={16} aria-hidden="true" /> Edit
+          </Link>
+        </div>
       </div>
 
+      {/* AI Computing Shimmer Feedback */}
+      {isGeneratingAi && (
+        <div className="ai-shimmer-card">
+          <div className="flex-row items-center justify-center gap-2 mb-1">
+            <Activity className="text-primary spinner" size={20} aria-hidden="true" />
+            <strong className="text-primary" style={{ fontSize: '1.05rem' }}>
+              Synthesizing Clinical Medical Brief with Local Ollama...
+            </strong>
+          </div>
+          <p className="muted small mb-0">
+            Analyzing documented allergies, current medications, contraindications, and emergency incidents. Zero cloud exposure.
+          </p>
+        </div>
+      )}
+
+      {/* Verified Clinical Medical Brief Card (High-Priority Display) */}
+      {latestAiSummary && briefContent && (
+        <section className={`verified-brief-card ${alertBorderClass}`} aria-labelledby="heading-ai-brief">
+          <div className="flex-row items-center justify-between gap-3 flex-wrap mb-2">
+            <div className="flex-row items-center gap-2">
+              <span className="handover-badge-pill">
+                <FileCheck2 size={13} aria-hidden="true" /> Verified Clinical Medical Brief
+              </span>
+              <span
+                className={`badge ${
+                  alertLevel === 'High'
+                    ? 'badge-danger'
+                    : alertLevel === 'Medium'
+                    ? 'badge-warning'
+                    : 'badge-ok'
+                }`}
+              >
+                Alert Level: {alertLevel}
+              </span>
+            </div>
+            <span className="muted small">
+              Generated by {latestAiSummary.model} · Verified at {formatDateTime(latestAiSummary.reviewedAt || latestAiSummary.createdAt)}
+            </span>
+          </div>
+
+          <div className="brief-protocol-box">
+            <div className="flex-row items-center gap-1 mb-1 font-bold">
+              <HeartPulse size={16} aria-hidden="true" /> Emergency Action Protocol (Field Directive):
+            </div>
+            <p className="mb-0">{briefContent.emergencyActionProtocol}</p>
+          </div>
+
+          <div className="modal-split-grid mt-2">
+            <div>
+              <span className="text-muted small uppercase font-bold flex-row items-center gap-1">
+                <AlertOctagon size={13} className="text-danger" aria-hidden="true" /> Critical Risks & Contraindications
+              </span>
+              {briefContent.criticalRisks?.length ? (
+                <div className="finding-chip-group">
+                  {briefContent.criticalRisks.map((item, idx) => (
+                    <span key={idx} className="finding-chip chip-danger">{item}</span>
+                  ))}
+                </div>
+              ) : (
+                <p className="small muted italic mt-1 mb-0">None identified</p>
+              )}
+            </div>
+
+            <div>
+              <span className="text-muted small uppercase font-bold flex-row items-center gap-1">
+                <AlertTriangle size={13} className="text-warn" aria-hidden="true" /> Allergy Alerts
+              </span>
+              {briefContent.allergiesSummary?.length ? (
+                <div className="finding-chip-group">
+                  {briefContent.allergiesSummary.map((item, idx) => (
+                    <span key={idx} className="finding-chip chip-warning">{item}</span>
+                  ))}
+                </div>
+              ) : (
+                <p className="small muted italic mt-1 mb-0">None documented</p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Medical Information */}
       <section className="card">
         <h2>Medical information</h2>
         <p className="muted small">
@@ -96,6 +292,7 @@ export default function PatientDetailPage() {
         )}
       </section>
 
+      {/* Emergency Contact */}
       <section className="card">
         <h2>Emergency contact</h2>
         {patient.emergencyContactName || patient.emergencyContactPhone ? (
@@ -110,6 +307,7 @@ export default function PatientDetailPage() {
         )}
       </section>
 
+      {/* Restricted Notes */}
       {showRestricted && (
         <section className="card">
           <h2>Restricted notes</h2>
@@ -127,6 +325,7 @@ export default function PatientDetailPage() {
         </section>
       )}
 
+      {/* Associated Incidents */}
       <section className="card">
         <h2>Associated incidents</h2>
         {incidents.length === 0 ? (
@@ -159,15 +358,15 @@ export default function PatientDetailPage() {
         )}
       </section>
 
-      <section className="card">
-        <h2>AI medical summary</h2>
-        <div className="notice notice-info">
-          <strong>Placeholder.</strong> Local AI summaries are built in Stage 8.
-        </div>
-        <button type="button" className="btn btn-primary" disabled>
-          <Sparkles size={16} aria-hidden="true" /> Generate AI summary
-        </button>
-      </section>
+      {/* AI Patient Review Modal */}
+      <PatientAiReviewModal
+        isOpen={aiModalOpen}
+        summaryData={aiDraftData}
+        onClose={() => setAiModalOpen(false)}
+        onApprove={handleApproveAiSummary}
+        isSubmitting={isApprovingAi}
+        error={aiError}
+      />
     </div>
   );
 }

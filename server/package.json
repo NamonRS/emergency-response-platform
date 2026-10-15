@@ -8,7 +8,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "db:setup": "node src/db/setup.js",
-    "db:reset": "node src/db/setup.js --reset"
+    "db:reset": "node src/db/setup.js --reset",
+    "check:system": "node --env-file=.env scripts/system-check.js"
   },
   "keywords": [],
   "author": "",

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Filter, Plus, Search, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Plus, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { listIncidents } from '../services/incidents.js';
 import LoadingSpinner from '../components/LoadingSpinner.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
@@ -12,6 +12,9 @@ export default function IncidentsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(Date.now());
+  const [secondsAgo, setSecondsAgo] = useState(0);
 
   const q = searchParams.get('q') ?? '';
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
@@ -25,12 +28,23 @@ export default function IncidentsPage() {
     setSearchInput(q);
   }, [q]);
 
+  // Seconds ago tick
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError('');
+    const timer = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastSyncedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lastSyncedAt]);
 
-    listIncidents({
+  const fetchData = useCallback((isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+      setError('');
+    } else {
+      setIsSyncing(true);
+    }
+
+    return listIncidents({
       q,
       page,
       status,
@@ -39,22 +53,46 @@ export default function IncidentsPage() {
       pageSize: 10,
     })
       .then((res) => {
-        if (!cancelled) {
-          setData(res);
-          setLoading(false);
-        }
+        setData(res);
+        setLastSyncedAt(Date.now());
+        setSecondsAgo(0);
+        setError('');
       })
       .catch((err) => {
-        if (!cancelled) {
-          setError(err.message);
-          setLoading(false);
-        }
+        if (!isBackground) setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+        setIsSyncing(false);
       });
+  }, [q, page, status, severity, incidentType]);
+
+  // Initial and param-change fetch
+  useEffect(() => {
+    fetchData(false);
+  }, [fetchData]);
+
+  // Background polling (8s) with visibility check
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchData(true);
+      }
+    }, 8000);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        fetchData(true);
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      cancelled = true;
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [q, page, status, severity, incidentType]);
+  }, [fetchData]);
 
   function updateFilters(updates) {
     const next = new URLSearchParams(searchParams);
@@ -90,9 +128,28 @@ export default function IncidentsPage() {
           <h1>Incidents</h1>
           <p className="muted">Live emergency response log and triage dispatch</p>
         </div>
-        <Link to="/incidents/new" className="btn btn-primary">
-          <Plus size={16} aria-hidden="true" /> Report incident
-        </Link>
+        <div className="flex-row items-center gap-3">
+          {/* Live Sync Badge */}
+          <div className="live-indicator-badge" title="Live background polling every 8s">
+            <span className="live-dot" aria-hidden="true" />
+            <span className="small muted">
+              {isSyncing ? 'Syncing...' : `Live Feed (${secondsAgo}s ago)`}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => fetchData(true)}
+              disabled={isSyncing || loading}
+              aria-label="Refresh incident feed"
+            >
+              <RefreshCw size={13} className={isSyncing ? 'spinner-icon' : ''} />
+            </button>
+          </div>
+
+          <Link to="/incidents/new" className="btn btn-primary">
+            <Plus size={16} aria-hidden="true" /> Report incident
+          </Link>
+        </div>
       </div>
 
       {/* Mandatory Clinical Disclaimer */}
@@ -291,4 +348,3 @@ export default function IncidentsPage() {
     </div>
   );
 }
-

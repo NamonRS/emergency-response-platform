@@ -1,4 +1,11 @@
 import { pool } from '../db/pool.js';
+import { HttpError } from '../utils/httpError.js';
+import { callOllama } from '../ai/ollamaClient.js';
+import {
+  PATIENT_SUMMARY_SYSTEM_PROMPT,
+  buildPatientSummaryUserPrompt,
+} from '../ai/prompts/patientSummaryPrompt.js';
+import { patientAiOutputSchema } from '../validators/patientValidators.js';
 
 const PATIENT_COLUMNS = `
   id, patient_code, full_name,
@@ -24,7 +31,7 @@ const FIELD_COLUMNS = [
 // Restricted notes text is only ever included for administrators.
 function mapPatient(row, { isAdmin }) {
   return {
-    id: row.id,
+    id: String(row.id),
     patientCode: row.patient_code,
     fullName: row.full_name,
     dateOfBirth: row.date_of_birth,
@@ -68,7 +75,7 @@ export async function listPatients({ q, page, pageSize }) {
   const total = Number(countRes.rows[0].total);
   return {
     patients: dataRes.rows.map((r) => ({
-      id: r.id,
+      id: String(r.id),
       patientCode: r.patient_code,
       fullName: r.full_name,
       dateOfBirth: r.date_of_birth,
@@ -93,13 +100,38 @@ export async function getPatientIncidents(patientId) {
     [patientId]
   );
   return rows.map((r) => ({
-    id: r.id,
+    id: String(r.id),
     incidentCode: r.incident_code,
     incidentType: r.incident_type,
     severity: r.severity,
     status: r.status,
     occurredAt: r.occurred_at,
   }));
+}
+
+export async function getLatestPatientAiSummary(patientId) {
+  const { rows } = await pool.query(
+    `SELECT id, summary_type, patient_id, model, prompt_version,
+            generated_content, edited_content, review_status, reviewed_at, created_at
+       FROM ai_summaries
+      WHERE patient_id = $1 AND summary_type = 'patient_medical' AND review_status = 'reviewed'
+      ORDER BY created_at DESC
+      LIMIT 1`,
+    [patientId]
+  );
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    id: String(r.id),
+    summaryType: r.summary_type,
+    patientId: String(r.patient_id),
+    model: r.model,
+    promptVersion: r.prompt_version,
+    content: r.edited_content || r.generated_content,
+    reviewStatus: r.review_status,
+    reviewedAt: r.reviewed_at,
+    createdAt: r.created_at,
+  };
 }
 
 export async function createPatient(data, userId, { isAdmin }) {
@@ -170,4 +202,117 @@ export async function updatePatient(id, data, { isAdmin }) {
   ).map(([name]) => name);
 
   return { patient: mapPatient(updated, { isAdmin }), changedFields };
+}
+
+export async function generatePatientSummary(patientId, user) {
+  const patient = await getPatientById(patientId, { isAdmin: false });
+  if (!patient) {
+    throw new HttpError(404, 'NOT_FOUND', 'Patient not found.');
+  }
+
+  const incidents = await getPatientIncidents(patientId);
+
+  // Exact data sent to model (never includes restricted notes)
+  const sourceSnapshot = {
+    patientCode: patient.patientCode,
+    fullName: patient.fullName,
+    dateOfBirth: patient.dateOfBirth,
+    conditions: patient.conditions,
+    allergies: patient.allergies,
+    medications: patient.medications,
+    medicalHistory: patient.medicalHistory,
+    emergencyContactName: patient.emergencyContactName,
+    emergencyContactRelationship: patient.emergencyContactRelationship,
+    emergencyContactPhone: patient.emergencyContactPhone,
+    incidentsCount: incidents.length,
+  };
+
+  const userPrompt = buildPatientSummaryUserPrompt({ patient, incidents });
+
+  const { rawOutput, model, totalDurationMs } = await callOllama({
+    prompt: userPrompt,
+    systemPrompt: PATIENT_SUMMARY_SYSTEM_PROMPT,
+    format: 'json',
+  });
+
+  let parsed;
+  try {
+    parsed = JSON.parse(rawOutput);
+  } catch {
+    throw new HttpError(502, 'AI_INVALID_JSON', 'Local AI generated an invalid JSON response.');
+  }
+
+  const validatedContent = patientAiOutputSchema.parse(parsed);
+
+  const insertRes = await pool.query(
+    `INSERT INTO ai_summaries
+       (summary_type, patient_id, requested_by, model, prompt_version, source_snapshot, generated_content, review_status, generation_ms)
+     VALUES
+       ('patient_medical', $1, $2, $3, 'v1.0', $4, $5, 'pending_review', $6)
+     RETURNING id, created_at`,
+    [
+      patientId,
+      user.id,
+      model,
+      JSON.stringify(sourceSnapshot),
+      JSON.stringify(validatedContent),
+      totalDurationMs ?? 0,
+    ]
+  );
+
+  const summaryRow = insertRes.rows[0];
+
+  return {
+    summaryId: String(summaryRow.id),
+    patientId: String(patientId),
+    model,
+    promptVersion: 'v1.0',
+    reviewStatus: 'pending_review',
+    generatedContent: validatedContent,
+    sourceSnapshot,
+    generationMs: totalDurationMs,
+    createdAt: summaryRow.created_at,
+  };
+}
+
+export async function acceptPatientSummary(patientId, { summary_id, edited_content }, user) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const checkRes = await client.query(
+      `SELECT id, patient_id, review_status
+         FROM ai_summaries
+        WHERE id = $1 AND patient_id = $2 AND summary_type = 'patient_medical'
+        FOR UPDATE`,
+      [summary_id, patientId]
+    );
+
+    if (checkRes.rows.length === 0) {
+      throw new HttpError(404, 'NOT_FOUND', 'Patient AI summary draft not found.');
+    }
+
+    const currentSummary = checkRes.rows[0];
+    if (currentSummary.review_status === 'reviewed') {
+      throw new HttpError(400, 'ALREADY_REVIEWED', 'This AI summary draft has already been approved.');
+    }
+
+    await client.query(
+      `UPDATE ai_summaries
+          SET review_status = 'reviewed',
+              reviewed_by = $1,
+              reviewed_at = now(),
+              edited_content = $2
+        WHERE id = $3`,
+      [user.id, JSON.stringify(edited_content), summary_id]
+    );
+
+    await client.query('COMMIT');
+    return await getLatestPatientAiSummary(patientId);
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
 }

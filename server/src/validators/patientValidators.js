@@ -74,3 +74,35 @@ export const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(100000).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(10),
 });
+
+export const patientAiOutputSchema = z.object({
+  clinicalAlert: z.enum(['High', 'Medium', 'Low']).catch('Medium'),
+  criticalRisks: z.array(z.string()).default([]),
+  allergiesSummary: z.array(z.string()).default([]),
+  chronicConditionsSummary: z.array(z.string()).default([]),
+  emergencyActionProtocol: z.string().trim().default(''),
+});
+
+const optionalBigInt = z
+  .union([z.string().regex(/^\d{1,15}$/, 'Invalid id format.'), z.number().int().positive()])
+  .nullish()
+  .transform((v) => {
+    if (v === undefined || v === null || v === '') return null;
+    return String(v);
+  });
+
+export const acceptPatientAiSummaryBodySchema = z
+  .object({
+    summary_id: optionalBigInt,
+    summaryId: optionalBigInt,
+    edited_content: z.record(z.string(), z.any()).optional(),
+    editedContent: z.record(z.string(), z.any()).optional(),
+  })
+  .refine((d) => Boolean(d.summary_id || d.summaryId), {
+    message: 'summary_id is required.',
+    path: ['summary_id'],
+  })
+  .transform((d) => ({
+    summary_id: d.summary_id || d.summaryId,
+    edited_content: d.edited_content || d.editedContent || {},
+  }));
