@@ -6,6 +6,8 @@ import { config } from './config.js';
 import { pool } from './db/pool.js';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import patientRoutes from './routes/patientRoutes.js';
+import incidentRoutes from './routes/incidentRoutes.js';
 import { originCheck } from './middleware/originCheck.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 
@@ -52,6 +54,8 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/incidents', incidentRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

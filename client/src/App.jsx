@@ -4,6 +4,9 @@ import AppLayout from './layouts/AppLayout.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import UsersPage from './pages/UsersPage.jsx';
+import PatientsPage from './pages/PatientsPage.jsx';
+import PatientDetailPage from './pages/PatientDetailPage.jsx';
+import PatientFormPage from './pages/PatientFormPage.jsx';
 import PlaceholderPage from './pages/PlaceholderPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
@@ -16,6 +19,12 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
+
+          <Route path="patients" element={<PatientsPage />} />
+          <Route path="patients/new" element={<PatientFormPage />} />
+          <Route path="patients/:id" element={<PatientDetailPage />} />
+          <Route path="patients/:id/edit" element={<PatientFormPage />} />
+
           <Route
             path="incidents"
             element={
@@ -27,12 +36,12 @@ export default function App() {
             }
           />
           <Route
-            path="patients"
+            path="incidents/:id"
             element={
               <PlaceholderPage
-                title="Patients"
-                stage="Stage 4"
-                description="Synthetic patient records with search, create, and edit."
+                title="Incident details"
+                stage="Stage 5"
+                description="Incident details, history, and notes."
               />
             }
           />

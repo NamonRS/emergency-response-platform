@@ -89,3 +89,42 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   .page { padding: 16px; }
   .topbar, .disclaimer-bar { padding-left: 16px; padding-right: 16px; }
 }
+/* ---------- Stage 4 additions ---------- */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.pre-wrap { white-space: pre-wrap; }
+.plain-list { margin: 4px 0; padding-left: 18px; }
+h3 { font-size: 0.95rem; margin: 14px 0 4px; }
+.card h2 { margin-bottom: 6px; }
+
+.search-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.search-bar input { flex: 1; min-width: 220px; padding: 10px 12px; border: 1px solid #b8c2cc; border-radius: 8px; font: inherit; }
+.empty-state { text-align: center; color: var(--muted); }
+.pagination { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.pagination-buttons { display: flex; gap: 8px; }
+
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px 24px; }
+
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 16px; }
+.form-field textarea,
+.form-field input[type='date'],
+.form-field input[type='tel'] { padding: 10px 12px; border: 1px solid #b8c2cc; border-radius: 8px; font: inherit; font-family: inherit; }
+.form-field textarea { resize: vertical; }
+.form-field [aria-invalid='true'] { border-color: var(--danger); }
+.form-fieldset { border: 1px solid var(--border); border-radius: 8px; margin: 14px 0; padding: 10px 14px 14px; }
+.form-fieldset legend { font-weight: 600; font-size: 0.9rem; padding: 0 6px; }
+.form-fieldset textarea { width: 100%; margin-top: 10px; padding: 10px 12px; border: 1px solid #b8c2cc; border-radius: 8px; font: inherit; resize: vertical; }
+.radio-row { display: flex; gap: 8px 20px; flex-wrap: wrap; }
+.radio-label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.92rem; }
+.field-error { color: var(--danger); font-size: 0.85rem; margin: 2px 0 0; }
+.form-actions { display: flex; gap: 10px; margin: 20px 0 40px; }
+.notice-success { background: var(--ok-soft); color: var(--ok); }
+
+.badge-severity-low { background: var(--ok-soft); color: var(--ok); }
+.badge-severity-medium { background: var(--warn-soft); color: var(--warn); }
+.badge-severity-high { background: var(--danger-soft); color: var(--danger); }
+.badge-severity-critical { background: var(--danger); color: #fff; }
+.badge-status-reported { background: #e5e7eb; color: #374151; }
+.badge-status-under_review { background: var(--warn-soft); color: var(--warn); }
+.badge-status-response_in_progress { background: var(--info-soft); color: var(--info); }
+.badge-status-resolved { background: var(--ok-soft); color: var(--ok); }
+.badge-status-closed { background: #e5e7eb; color: #4b5563; }
