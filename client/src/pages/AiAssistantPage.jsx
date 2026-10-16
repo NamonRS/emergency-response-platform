@@ -230,10 +230,20 @@ export default function AiAssistantPage() {
       .map((m) => ({ sender: m.sender, text: m.text }));
 
     try {
-      const data = await queryAssistant({
+      const res = await queryAssistant({
         message: textToSend,
         conversationHistory,
       });
+
+      const replyText =
+        res?.reply ||
+        res?.data?.reply ||
+        res?.message ||
+        res?.data?.message ||
+        (typeof res === 'string' ? res : 'No response text received.');
+
+      const modelUsed = res?.model || res?.data?.model || null;
+      const genMs = res?.generationMs || res?.data?.generationMs || null;
 
       const match = findMatchingProtocol(textToSend);
 
@@ -241,9 +251,9 @@ export default function AiAssistantPage() {
         id: `a-${Date.now()}`,
         sender: 'assistant',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: data.reply || 'Protocol analysis completed.',
-        model: data.model,
-        generationMs: data.generationMs,
+        text: replyText,
+        model: modelUsed,
+        generationMs: genMs,
         protocol: match,
       };
 

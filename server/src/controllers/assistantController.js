@@ -71,11 +71,16 @@ export async function queryAssistant(req, res, next) {
       },
     });
 
-    res.json({
-      success: true,
+    const payload = {
       reply: rawOutput,
       model: model || modelToUse,
       generationMs: latencyMs,
+    };
+
+    res.json({
+      success: true,
+      data: payload,
+      ...payload,
     });
   } catch (err) {
     next(err);
